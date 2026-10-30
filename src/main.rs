@@ -1,30 +1,44 @@
 // Main function
 fn main() {
-    println!("Hello, world!");
-    // Input for the LOLCODE program
-    // let lolcodeInput: &str = "..........";
+    //     test for lexical part
 
-    // Create a new instance of the Compiler struct
-    // let mut compiler = Compiler::new(lolcodeInput);
-    // Create a new instance of the LexicalAnalyzer struct with the lolcode input
-    // let mut lexer: LexicalAnalyzer = LexicalAnalyzer::new(lolcodeInput);
+    let mut lexer = Lexer::new("#HAI");
 
-    // Initialize the current token with the first token from the lexer
-    // let compiler.current_token = lexer.start();
+    let c = lexer.get_char();
+    lexer.add_char(c);
 
-    // Create a new instance of the SyntaxAnalyzer struct with references to the lexer and compiler
-    // let mut syntax_analyzer = SyntaxAnalyzer::new(&lexer, &compiler);
-    // Call the lolspeak method to parse the lolcode according to the grammar rules
-    // parser.lolspeak();
+    println!("First character: {:?}", c);
+    println!("Current lexeme: {:?}", lexer.current_lexeme);
+    println!("Recognizes #hai: {}", lexer.lookup("#hai"));
+    // Comment for professor if you see on GitHub: thank god this part finally works (╥﹏╥)
+    }
+// fn main() {
 
-    // Check if there are any remaining tokens or if the current token is not empty
-    // if !lexer.tokens.is_empty() || !compiler.current_token.is_empty() {
-            // Print an error message if there are any additional tokens
-            // eprintln!("A syntax error was encountered. Additional tokens found.");
-            // Exit the program with an error code
-            // std::process::exit(1);
-    // }
-}
+//     Input for the LOLCODE program
+//     let lolcodeInput: &str = "..........";
+
+//     Create a new instance of the Compiler struct
+//     let mut compiler = Compiler::new(lolcodeInput);
+//     Create a new instance of the LexicalAnalyzer struct with the lolcode input
+//     let mut lexer: LexicalAnalyzer = LexicalAnalyzer::new(lolcodeInput);
+
+//     Initialize the current token with the first token from the lexer
+//     let compiler.current_token = lexer.start();
+
+//     Create a new instance of the SyntaxAnalyzer struct with references to the lexer and compiler
+//     let mut syntax_analyzer = SyntaxAnalyzer::new(&lexer, &compiler);
+//     Call the lolspeak method to parse the lolcode according to the grammar rules
+//     parser.lolspeak();
+
+//     Check if there are any remaining tokens or if the current token is not empty
+//     if !lexer.tokens.is_empty() || !compiler.current_token.is_empty() {
+//             Print an error message if there are any additional tokens
+//             eprintln!("A syntax error was encountered. Additional tokens found.");
+//             Exit the program with an error code
+//             std::process::exit(1);
+//     }
+// }
+
 /// Trait for a simple lolcompiler front-end.
 /// Errors should cause immediate exit inside the implementation.
 pub trait Compiler {
@@ -59,6 +73,96 @@ fn add_char(&mut self, c: char);
 /// Returns true if a valid token/lexeme, false otherwise.
 fn lookup(&self, s: &str) -> bool;
 }
+
+pub struct Lexer {
+    input: Vec<char>,
+    position: usize,
+    current_lexeme: String,
+    // tokens: Vec<String>,
+    annotations: Vec<String>,
+    selectors: Vec<String>,
+    line: usize,
+    column: usize,
+}
+
+
+impl Lexer {
+    pub fn new(input: &str) -> Self {
+        Self {
+            input: input.chars().collect(),
+            position: 0,
+            current_lexeme: String::new(),
+            // tokens: Vec::new(),
+
+            annotations: vec![
+                "#HAI".into(),
+                "#KBYE".into(),
+                "#OBTW".into(),
+                "#TLDR".into(),
+                "#MAEK".into(),
+                "#OIC".into(),
+                "#GIMMEH".into(),
+                "#MKAY".into(),
+                "#NEWLINE".into(),
+                "#IHAZ".into(),
+                "#ITIZ".into(),
+            ],
+
+            selectors: vec![
+                "HEAD".into(),
+                "TITLE".into(),
+                "PARAGRAF".into(),
+                "BOLD".into(),
+                "LIST".into(),
+                "ITEM".into(),
+                "LINX".into(),
+                "VAR".into(),
+            ],
+
+            line: 1,
+            column: 1,
+        }
+    }
+}
+
+impl LexicalAnalyzer for Lexer {
+    fn get_char(&mut self) -> char {
+        if self.position >= self.input.len() {
+            eprintln!(
+                "Unexpected end of input at line {}, column {}.",
+                self.line,
+                self.column
+            );
+            std::process::exit(1);
+        }
+
+        let c = self.input[self.position];
+        self.position += 1;
+
+        if c == '\n' {
+            self.line += 1;
+            self.column = 1;
+        } else {
+            self.column += 1;
+        }
+
+        c
+    }
+
+    fn add_char(&mut self, c: char) {
+        self.current_lexeme.push(c);
+    }
+
+    fn lookup(&self, s: &str) -> bool {
+        self.annotations
+            .iter()
+            .any(|annotation| annotation.eq_ignore_ascii_case(s))
+            || self.selectors
+                .iter()
+                .any(|selector| selector.eq_ignore_ascii_case(s))
+    }
+}
+
 
 
         // TO DO Maybe Delete past lexical analyzer code and implement the new one above
