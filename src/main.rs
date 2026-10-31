@@ -171,6 +171,121 @@ impl Lexer {
             column: 1,
         }
     }
+
+    pub fn tokenize(&mut self) -> Result<(), String> {
+        self.position = 0;
+        self.line = 1;
+        self.column = 1;
+        self.current_lexeme.clear();
+        self.tokens.clear();
+
+        while self.position < self.input.len() {
+            self.current_lexeme.clear();
+
+            let start_line = self.line;
+            let start_column = self.column;
+
+            if self.input[self.position] == '#' {
+                // Read the annotation's initial '#'.
+                let c = self.get_char();
+                self.add_char(c);
+
+                // Read the rest of the annotation.
+                while self.position < self.input.len() {
+                    let next = self.input[self.position];
+
+                    if next.is_whitespace() || next == '#' {
+                        break;
+                    }
+
+                    let c = self.get_char();
+                    self.add_char(c);
+                }
+
+                let annotation = self.current_lexeme.clone();
+
+                let is_annotation = annotation.starts_with('#')
+                    && self.lookup(&annotation);
+
+                if !is_annotation {
+                    return Err(format!(
+                        "Lexical error at line {}, column {}: \
+                        unknown annotation '{}'.",
+                        start_line, start_column, annotation
+                    ));
+                }
+
+                // Normalize keywords, but not ordinary text.
+                self.tokens.push(annotation.to_ascii_uppercase());
+
+                let expects_selector =
+                    annotation.eq_ignore_ascii_case("#MAEK")
+                        || annotation.eq_ignore_ascii_case("#GIMMEH");
+
+                if expects_selector {
+                    // Whitespace here separates the annotation
+                    // from its selector; it is not document text.
+                    while self.position < self.input.len()
+                        && self.input[self.position].is_whitespace()
+                    {
+                        self.get_char();
+                    }
+
+                    let selector_line = self.line;
+                    let selector_column = self.column;
+
+                    self.current_lexeme.clear();
+
+                    while self.position < self.input.len() {
+                        let next = self.input[self.position];
+
+                        if next.is_whitespace() || next == '#' {
+                            break;
+                        }
+
+                        let c = self.get_char();
+                        self.add_char(c);
+                    }
+
+                    let selector = self.current_lexeme.clone();
+
+                    let is_selector = self.selectors
+                        .iter()
+                        .any(|allowed| {
+                            allowed.eq_ignore_ascii_case(&selector)
+                        });
+
+                    if !is_selector {
+                        return Err(format!(
+                            "Lexical error at line {}, column {}: \
+                            expected a selector after '{}', found {:?}.",
+                            selector_line,
+                            selector_column,
+                            annotation,
+                            selector
+                        ));
+                    }
+
+                    self.tokens.push(selector.to_ascii_uppercase());
+                }
+            } else {
+                // Ordinary text continues until the next annotation.
+                while self.position < self.input.len()
+                    && self.input[self.position] != '#'
+                {
+                    let c = self.get_char();
+                    self.add_char(c);
+                }
+
+                if !self.current_lexeme.is_empty() {
+                    self.tokens.push(self.current_lexeme.clone());
+                }
+            }
+        }
+
+        self.current_lexeme.clear();
+        Ok(())
+    }
 }
 
 impl LexicalAnalyzer for Lexer {
