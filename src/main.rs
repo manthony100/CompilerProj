@@ -12,8 +12,7 @@ fn main() {
     println!("Recognizes #hai: {}", lexer.lookup("#hai"));
     // Comment for professor if you see on GitHub: thank god this part finally works (╥﹏╥)
 
-    let source =
-    "#hai#maek paragraf Hello, world!#mkay#kbye";
+    let source = "#HAI#HEY#KBYE";
 
     let mut lexer = Lexer::new(source);
 
