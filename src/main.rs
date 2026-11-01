@@ -11,6 +11,25 @@ fn main() {
     println!("Current lexeme: {:?}", lexer.current_lexeme);
     println!("Recognizes #hai: {}", lexer.lookup("#hai"));
     // Comment for professor if you see on GitHub: thank god this part finally works (╥﹏╥)
+
+    let source =
+        "#HAI#MAEK PARAGRAF Hello, world!#MKAY#KBYE";
+
+    let mut lexer = Lexer::new(source);
+
+    match lexer.tokenize() {
+        Ok(()) => {
+            println!("Tokenization succeeded.");
+
+            for (index, token) in lexer.tokens.iter().enumerate() {
+                println!("{}: {:?}", index, token);
+            }
+        }
+        Err(message) => {
+            eprintln!("{}", message);
+            std::process::exit(1);
+        }
+    }
     }
 // fn main() {
 
@@ -96,24 +115,24 @@ fn lookup(&self, s: &str) -> bool;
 // /// over Vec<String>. Each function parses a nonterminal in
 // /// the grammar. On error: return Err(message), on success: Ok(()).
 // I chose option two because like why wouldn't I want an error message, nvm so apparently it just means it'd be as a separate message which is also cool
-pub trait SyntaxAnalyzer {
-fn parse_lolcode(&mut self) -> Result<(), String>;
-fn parse_head(&mut self) -> Result<(), String>;
-fn parse_title(&mut self) -> Result<(), String>;
-fn parse_comment(&mut self) -> Result<(), String>;
-fn parse_body(&mut self) -> Result<(), String>;
-fn parse_paragraph(&mut self) -> Result<(), String>;
-fn parse_inner_paragraph(&mut self) -> Result<(), String>;
-fn parse_inner_text(&mut self) -> Result<(), String>;
-fn parse_variable_define(&mut self) -> Result<(), String>;
-fn parse_variable_use(&mut self) -> Result<(), String>;
-fn parse_bold(&mut self) -> Result<(), String>;
-fn parse_list(&mut self) -> Result<(), String>;
-fn parse_list_items(&mut self) -> Result<(), String>;
-fn parse_inner_list(&mut self) -> Result<(), String>;
-fn parse_link(&mut self) -> Result<(), String>;
-fn parse_newline(&mut self) -> Result<(), String>;
-fn parse_text(&mut self) -> Result<(), String>;
+pub trait SyntaxAnalyzer { // Declares the required behavior for a syntax analyzer in the LOLCODE Markdown language.
+fn parse_lolcode(&mut self) -> Result<(), String>; // Parses the <lolcode> nonterminal in the grammar. Returns Ok(()) on success, or Err(message) on error.
+fn parse_head(&mut self) -> Result<(), String>; // Parses the <head> nonterminal in the grammar. Returns Ok(()) on success, or Err(message) on error.
+fn parse_title(&mut self) -> Result<(), String>; // Parses the <title> nonterminal in the grammar. Returns Ok(()) on success, or Err(message) on error.
+fn parse_comment(&mut self) -> Result<(), String>; // Parses the <comment> nonterminal in the grammar. Returns Ok(()) on success, or Err(message) on error.
+fn parse_body(&mut self) -> Result<(), String>; // Parses the <body> nonterminal in the grammar. Returns Ok(()) on success, or Err(message) on error.
+fn parse_paragraph(&mut self) -> Result<(), String>; // Parses the <paragraph> nonterminal in the grammar. Returns Ok(()) on success, or Err(message) on error.
+fn parse_inner_paragraph(&mut self) -> Result<(), String>; // Parses the <inner_paragraph> nonterminal in the grammar. Returns Ok(()) on success, or Err(message) on error.
+fn parse_inner_text(&mut self) -> Result<(), String>; // Parses the <inner_text> nonterminal in the grammar. Returns Ok(()) on success, or Err(message) on error.
+fn parse_variable_define(&mut self) -> Result<(), String>; // Parses the <variable_define> nonterminal in the grammar. Returns Ok(()) on success, or Err(message) on error.
+fn parse_variable_use(&mut self) -> Result<(), String>; // Parses the <variable_use> nonterminal in the grammar. Returns Ok(()) on success, or Err(message) on error.
+fn parse_bold(&mut self) -> Result<(), String>; // Parses the <bold> nonterminal in the grammar. Returns Ok(()) on success, or Err(message) on error.
+fn parse_list(&mut self) -> Result<(), String>; // Parses the <list> nonterminal in the grammar. Returns Ok(()) on success, or Err(message) on error.
+fn parse_list_items(&mut self) -> Result<(), String>; // Parses the <list_items> nonterminal in the grammar. Returns Ok(()) on success, or Err(message) on error.
+fn parse_inner_list(&mut self) -> Result<(), String>; // Parses the <inner_list> nonterminal in the grammar. Returns Ok(()) on success, or Err(message) on error.
+fn parse_link(&mut self) -> Result<(), String>; // Parses the <link> nonterminal in the grammar. Returns Ok(()) on success, or Err(message) on error.
+fn parse_newline(&mut self) -> Result<(), String>; // Parses the <newline> nonterminal in the grammar. Returns Ok(()) on success, or Err(message) on error.
+fn parse_text(&mut self) -> Result<(), String>; // Parses the <text> nonterminal in the grammar. Returns Ok(()) on success, or Err(message) on error.
 }
 
 //              Phase 2 - Task #1 
@@ -122,7 +141,7 @@ fn parse_text(&mut self) -> Result<(), String>;
 
 // Partitions the lexemes of a source file in our LOLCODE Markdown language into tokens
 
-pub struct Lexer {
+pub struct Lexer { 
     input: Vec<char>,
     position: usize,
     current_lexeme: String,
