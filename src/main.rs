@@ -13,7 +13,7 @@ fn main() {
     // Comment for professor if you see on GitHub: thank god this part finally works (╥﹏╥)
 
     let source =
-        "#HAI#MAEK PARAGRAF Hello, world!#MKAY#KBYE";
+    "#hai#maek paragraf Hello, world!#mkay#kbye";
 
     let mut lexer = Lexer::new(source);
 
