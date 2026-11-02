@@ -1,6 +1,6 @@
 // Main function
 fn main() {
-    let source = "#hai #obTw this is a comment #TLDR
+    let source1 = "#hai #obTw this is a comment #TLDR
     #MAEK HEAD #GIMMEH TITLE testing #OIC #MKAY
     #IHAZ numItems #ITIZ 2 #MKAY
     #MAEK PARAgraf #NEWLINE
@@ -8,6 +8,16 @@ fn main() {
         #MAEK LIST #GIMMEH ITEM item1 #OIC #GIMMEH ITEM item2 #OIC #MKAY 
         #GIMMEH LINX https://github.com/manthony100/CompilerProj #OIC
     #MKAY #KBYE";
+
+    let source = "#HAI
+        #IHAZ myname #ITIZ Josh #MKAY
+        Before: #GIMMEH VAR myname #OIC
+        #MAEK PARAGRAF
+        #IHAZ myname #ITIZ Jon #MKAY
+        Inside: #GIMMEH VAR myname #OIC
+        #MKAY
+        After: #GIMMEH VAR myname #OIC
+    #KBYE";
 
     let mut lexer = Lexer::new(source);
 
