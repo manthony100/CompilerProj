@@ -1,88 +1,161 @@
+use std::env;
+use std::fs;
+use std::path::Path;
+use std::process;
+
 // Main function
 fn main() {
-    let source1 = "#hai #obTw this is a comment #TLDR
-    #MAEK HEAD #GIMMEH TITLE testing #OIC #MKAY
-    #IHAZ numItems #ITIZ 2 #MKAY
-    #MAEK PARAgraf #NEWLINE
-        #GIMMEH BOLD After this is a list of #OIC #GIMMEH VAR numItems #OIC #GIMMEH BOLD items #OIC
-        #MAEK LIST #GIMMEH ITEM item1 #OIC #GIMMEH ITEM item2 #OIC #MKAY 
-        #GIMMEH LINX https://github.com/manthony100/CompilerProj #OIC
-    #MKAY #KBYE";
-
-    let source2 = "#HAI
-        #IHAZ myname #ITIZ Josh #MKAY
-        Before: #GIMMEH VAR myname #OIC
-        #MAEK PARAGRAF
-        #IHAZ myname #ITIZ Jon #MKAY
-        Inside: #GIMMEH VAR myname #OIC
-        #MKAY
-        After: #GIMMEH VAR myname #OIC
-    #KBYE";
-
-    let source3 = "#HAI
-        #MAEK PARAGRAF
-        #GIMMEH VAR missing #OIC
-        #MKAY
-    #KBYE";
-
-    let source4 = "\
-        #HAI
-        #MAEK PARAGRAF
-        #IHAZ localname #ITIZ Lisa #MKAY
-        Inside: #GIMMEH VAR localname #OIC
-        #MKAY
-        Outside: #GIMMEH VAR localname #OIC
-    #KBYE";
-
-    let source = "#HAI
-        #MAEK LIST
-        #GIMMEH ITEM
-        #IHAZ itemname #ITIZ Homer #MKAY
-        #GIMMEH VAR itemname #OIC
-        #OIC
-        #GIMMEH ITEM
-        #GIMMEH VAR itemname #OIC
-        #OIC
-        #MKAY
-    #KBYE";
-
-    let mut lexer = Lexer::new(source);
-
-    if let Err(message) = lexer.tokenize() {
+    if let Err(message) = run() {
         eprintln!("{}", message);
         std::process::exit(1);
     }
+}
+
+fn run() -> Result<(), String> {
+    let args: Vec<String> = env::args().collect();
+
+    if args.len() != 2 {
+        return Err(
+            "Usage: lolcompiler <input.lol>".to_string()
+        );
+    }
+
+    let input_path = Path::new(&args[1]);
+
+    if input_path.extension().and_then(|ext| ext.to_str())
+        != Some("lol")
+    {
+        return Err(
+            "Usage error: input file must have a .lol extension."
+                .to_string()
+        );
+    }
+
+    let source = fs::read_to_string(input_path)
+        .map_err(|error| {
+            format!(
+                "Could not read '{}': {}",
+                input_path.display(),
+                error
+            )
+        })?;
+
+    let mut lexer = Lexer::new(&source);
+    lexer.tokenize()?;
 
     let mut parser = Parser::new(lexer.tokens);
+    parser.parse_lolcode()?;
 
-    if let Err(message) = parser.parse_lolcode() {
-        eprintln!("{}", message);
-        std::process::exit(1);
-    }
-
-    println!("Syntax analysis succeeded.");
-
-    let tree = match parser.nodes.first_mut() {
-        Some(tree) => tree,
-
-        None => {
-            eprintln!(
-                "Internal compiler error: parsing produced no AST."
-            );
-            std::process::exit(1);
-        }
-    };
+    let tree = parser.nodes.first_mut().ok_or_else(|| {
+        "Internal compiler error: no AST was produced.".to_string()
+    })?;
 
     let mut resolver = ScopeResolver::new();
+    resolver.resolve(tree)?;
 
-    if let Err(message) = resolver.resolve(tree) {
-        eprintln!("{}", message);
-        std::process::exit(1);
+    let html = HtmlGenerator::generate(tree)?;
+
+    let output_path = input_path.with_extension("html");
+
+    fs::write(&output_path, html)
+        .map_err(|error| {
+            format!(
+                "Could not write '{}': {}",
+                output_path.display(),
+                error
+            )
+        })?;
+
+    println!(
+        "Compilation succeeded: {}",
+        output_path.display()
+    );
+
+    if let Err(message) = open_in_browser(&output_path) {
+        eprintln!("Warning: {}", message);
     }
 
-    println!("Static scope analysis succeeded.");
-    println!("{:#?}", tree);
+    Ok(())
 }
+
+fn open_in_browser(path: &Path) -> Result<(), String> {
+    let absolute_path = fs::canonicalize(path)
+        .map_err(|error| {
+            format!(
+                "Could not locate generated HTML file: {}",
+                error
+            )
+        })?;
+
+    let status = process::Command::new("open")
+        .arg(&absolute_path)
+        .status()
+        .map_err(|error| {
+            format!(
+                "Could not launch the browser-opening command: {}",
+                error
+            )
+        })?;
+
+    if !status.success() {
+        return Err(format!(
+            "Browser-opening command failed with status {}.",
+            status
+        ));
+    }
+
+    Ok(())
+}
+// fn main() {
+//     let source = "#HAI
+//         #MAEK LIST
+//         #GIMMEH ITEM
+//         #IHAZ itemname #ITIZ Homer #MKAY
+//         #GIMMEH VAR itemname #OIC
+//         #OIC
+//         #GIMMEH ITEM
+//         #GIMMEH VAR itemname #OIC
+//         #OIC
+//         #MKAY
+//     #KBYE";
+
+//     let mut lexer = Lexer::new(source);
+
+//     if let Err(message) = lexer.tokenize() {
+//         eprintln!("{}", message);
+//         std::process::exit(1);
+//     }
+
+//     let mut parser = Parser::new(lexer.tokens);
+
+//     if let Err(message) = parser.parse_lolcode() {
+//         eprintln!("{}", message);
+//         std::process::exit(1);
+//     }
+
+//     println!("Syntax analysis succeeded.");
+
+//     let tree = match parser.nodes.first_mut() {
+//         Some(tree) => tree,
+
+//         None => {
+//             eprintln!(
+//                 "Internal compiler error: parsing produced no AST."
+//             );
+//             std::process::exit(1);
+//         }
+//     };
+
+//     let mut resolver = ScopeResolver::new();
+
+//     if let Err(message) = resolver.resolve(tree) {
+//         eprintln!("{}", message);
+//         std::process::exit(1);
+//     }
+
+//     println!("Static scope analysis succeeded.");
+//     println!("{:#?}", tree);
+// }
 
 /// Trait for a simple lolcompiler front-end.
 /// Errors should cause immediate exit inside the implementation.
@@ -1007,6 +1080,206 @@ impl ScopeResolver {
 // lower-level, executable language - HTML
 // Produce an output file with the same name as the input file, but with a .html extension
 // The output file should be a valid HTML file that can be opened in a web browser and should contain the compiled html tags
+pub struct HtmlGenerator;
+
+impl HtmlGenerator {
+    pub fn generate(tree: &AstNode) -> Result<String, String> {
+        let children = match tree {
+            AstNode::Document(children) => children,
+            _ => {
+                return Err(
+                    "HTML generation error: expected a Document AST root."
+                        .to_string()
+                );
+            }
+        };
+
+        let mut html = String::new();
+
+        html.push_str("<!DOCTYPE html>\n");
+        html.push_str("<html lang=\"en\">\n");
+        html.push_str("<head>\n");
+        html.push_str("<meta charset=\"UTF-8\">\n");
+
+        let mut found_head = false;
+
+        for child in children {
+            if let AstNode::Head(head_child) = child {
+                found_head = true;
+                Self::render_children(head_child, &mut html)?;
+            }
+        }
+
+        if !found_head {
+            html.push_str("<title>LOLCODE document</title>\n");
+        }
+
+        html.push_str("</head>\n");
+        html.push_str("<body>\n");
+
+        for child in children {
+            if !matches!(child, AstNode::Head(_)) {
+                Self::render_node(child, &mut html)?;
+            }
+        }
+
+        html.push_str("\n</body>\n");
+        html.push_str("</html>\n");
+
+        Ok(html)
+    }
+
+    fn escape_html(text: &str) -> String {
+        text.replace('&', "&amp;")
+            .replace('<', "&lt;")
+            .replace('>', "&gt;")
+            .replace('"', "&quot;")
+            .replace('\'', "&#39;")
+    }
+
+    fn render_children(
+        children: &[AstNode],
+        html: &mut String,
+    ) -> Result<(), String> {
+        for child in children {
+            Self::render_node(child, html)?;
+        }
+
+        Ok(())
+    }
+
+    fn render_paragraph(
+        children: &[AstNode],
+        html: &mut String,
+    ) -> Result<(), String> {
+        let mut paragraph_open = false;
+        let mut emitted_content = false;
+
+        for child in children {
+            match child {
+                AstNode::VariableDefine { .. } => {
+                    // Definitions do not produce visible HTML.
+                }
+
+                AstNode::List(_) => {
+                    if paragraph_open {
+                        html.push_str("</p>\n");
+                        paragraph_open = false;
+                    }
+
+                    Self::render_node(child, html)?;
+                    emitted_content = true;
+                }
+
+                AstNode::Text(text)
+                    if !paragraph_open && text.trim().is_empty() =>
+                {
+                    // Keep formatting outside a paragraph segment.
+                    html.push_str(&Self::escape_html(text));
+                }
+
+                _ => {
+                    if !paragraph_open {
+                        html.push_str("<p>");
+                        paragraph_open = true;
+                    }
+
+                    Self::render_node(child, html)?;
+                    emitted_content = true;
+                }
+            }
+        }
+
+        if paragraph_open {
+            html.push_str("</p>\n");
+        } else if !emitted_content {
+            html.push_str("<p></p>\n");
+        }
+
+        Ok(())
+    }
+
+    fn render_node(
+        node: &AstNode,
+        html: &mut String,
+    ) -> Result<(), String> {
+        match node {
+            AstNode::Paragraph(children) => {
+                Self::render_paragraph(children, html)?;
+            }
+
+            AstNode::List(children) => {
+                html.push_str("<ul>\n");
+                Self::render_children(children, html)?;
+                html.push_str("</ul>\n");
+            }
+
+            AstNode::Item(children) => {
+                html.push_str("<li>");
+                Self::render_children(children, html)?;
+                html.push_str("</li>\n");
+            }
+
+            AstNode::Title(text) => {
+                html.push_str("<title>");
+                html.push_str(&Self::escape_html(text));
+                html.push_str("</title>\n");
+            }
+
+            AstNode::Comment(text) => {
+                html.push_str("<!--");
+                html.push_str(text);
+                html.push_str("-->");
+            }
+
+            AstNode::Bold(text) => {
+                html.push_str("<b>");
+                html.push_str(&Self::escape_html(text));
+                html.push_str("</b>");
+            }
+
+            AstNode::Text(text) => {
+                html.push_str(&Self::escape_html(text));
+            }
+
+            AstNode::Link(address) => {
+                let escaped = Self::escape_html(address);
+
+                html.push_str("<a href=\"");
+                html.push_str(&escaped);
+                html.push_str("\">");
+                html.push_str(&escaped);
+                html.push_str("</a>");
+            }
+
+            AstNode::Newline => {
+                html.push_str("<br>\n");
+            }
+
+            AstNode::VariableDefine { .. } => {
+                // Already used during scope resolution.
+            }
+
+            AstNode::VariableUse { name } => {
+                return Err(format!(
+                    "HTML generation error: unresolved variable '{}'.",
+                    name
+                ));
+            }
+
+            AstNode::Document(_) | AstNode::Head(_) => {
+                return Err(
+                    "HTML generation error: unexpected nested \
+                     Document or Head node."
+                        .to_string()
+                );
+            }
+        }
+
+        Ok(())
+    }
+    
+}
 
 //              Phase 3
 // The final program should take only one command-line argument provided by the user -
