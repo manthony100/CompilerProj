@@ -1,15 +1,5 @@
 // Main function
 fn main() {
-    //     test for lexical part
-
-    let mut lexer = Lexer::new("#HAI");
-
-    let c = lexer.get_char();
-    lexer.add_char(c);
-
-    println!("First character: {:?}", c);
-    println!("Current lexeme: {:?}", lexer.current_lexeme);
-    println!("Recognizes #hai: {}", lexer.lookup("#hai"));
     // Comment for professor if you see on GitHub: thank god this part finally works (╥﹏╥)
 
     let source = "#HAI VAR is ordinary text.#KBYE";
@@ -29,7 +19,7 @@ fn main() {
             std::process::exit(1);
         }
     }
-    }
+}
 // fn main() {
 
 //     Input for the LOLCODE program
@@ -72,6 +62,7 @@ fn current_token(&self) -> String;
 fn set_current_token(&mut self, tok: String);
 }
 
+    // Phase 2 - Task #1: Lexical Analyzer
 
 
 /// Trait for a simple lexical analyzer.
