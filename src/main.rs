@@ -1,6 +1,6 @@
 // Main function
 fn main() {
-    let source = "#hai #obTw this is a comment #TLDR #MAEK HEAD #GIMMEH TITLE testing #OIC #MKAY #KBYE";
+    let source = "#hai #obTw this is a comment #TLDR #MAEK HEAD #GIMMEH TITLE testing #OIC #MKAY #NEWLINE this should be on a new line #KBYE";
 
     let mut lexer = Lexer::new(source);
 
