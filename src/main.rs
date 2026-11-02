@@ -4,7 +4,7 @@ fn main() {
      #MAEK HEAD #GIMMEH TITLE testing #OIC #MKAY
      #MAEK PARAgraf #NEWLINE 
         #GIMMEH BOLD After this is a list #OIC
-        #MAEK LIST #GIMMEH ITEM item1 #OIC #GIMMEH ITEM item1 #OIC #MKAY 
+        #MAEK LIST #GIMMEH ITEM item1 #OIC #GIMMEH ITEM #GIMMEH BOLD item2 #OIC #OIC #MKAY 
     #MKAY #KBYE";
 
     let mut lexer = Lexer::new(source);
