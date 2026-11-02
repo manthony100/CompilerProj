@@ -19,10 +19,19 @@ fn main() {
         After: #GIMMEH VAR myname #OIC
     #KBYE";
 
-    let source = "#HAI
+    let source3 = "#HAI
         #MAEK PARAGRAF
         #GIMMEH VAR missing #OIC
         #MKAY
+    #KBYE";
+
+    let source = "\
+        #HAI
+        #MAEK PARAGRAF
+        #IHAZ localname #ITIZ Lisa #MKAY
+        Inside: #GIMMEH VAR localname #OIC
+        #MKAY
+        Outside: #GIMMEH VAR localname #OIC
     #KBYE";
 
     let mut lexer = Lexer::new(source);
