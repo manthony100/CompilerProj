@@ -1,10 +1,11 @@
 // Main function
 fn main() {
     let source = "#hai #obTw this is a comment #TLDR
-     #MAEK HEAD #GIMMEH TITLE testing #OIC #MKAY
+     #MAEK HEAD #GIMMEH LINX https://www.example.com #OIC #GIMMEH TITLE testing #OIC #MKAY
      #MAEK PARAgraf #NEWLINE 
         #GIMMEH BOLD After this is a list #OIC
         #MAEK LIST #GIMMEH ITEM item1 #OIC #GIMMEH ITEM item2 #OIC #MKAY 
+        
     #MKAY #KBYE";
 
     let mut lexer = Lexer::new(source);
