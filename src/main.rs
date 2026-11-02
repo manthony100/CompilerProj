@@ -25,13 +25,25 @@ fn main() {
         #MKAY
     #KBYE";
 
-    let source = "\
+    let source4 = "\
         #HAI
         #MAEK PARAGRAF
         #IHAZ localname #ITIZ Lisa #MKAY
         Inside: #GIMMEH VAR localname #OIC
         #MKAY
         Outside: #GIMMEH VAR localname #OIC
+    #KBYE";
+
+    let source = "#HAI
+        #MAEK LIST
+        #GIMMEH ITEM
+        #IHAZ itemname #ITIZ Homer #MKAY
+        #GIMMEH VAR itemname #OIC
+        #OIC
+        #GIMMEH ITEM
+        #GIMMEH VAR itemname #OIC
+        #OIC
+        #MKAY
     #KBYE";
 
     let mut lexer = Lexer::new(source);
