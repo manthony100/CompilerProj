@@ -4,7 +4,7 @@ fn main() {
     #MAEK HEAD #GIMMEH TITLE testing #OIC #MKAY
     #IHAZ numItems #ITIZ 2 #MKAY
     #MAEK PARAgraf #NEWLINE 
-        #GIMMEH BOLD After this is a list of #GIMMEH VAR numItems #OIC items #OIC
+        #GIMMEH BOLD After this is a list of #OIC #GIMMEH VAR numItems #OIC #GIMMEH BOLD items #OIC
         #MAEK LIST #GIMMEH ITEM item1 #OIC #GIMMEH ITEM item2 #OIC #MKAY 
         #GIMMEH LINX https://www.example.com #OIC
     #MKAY #KBYE";
