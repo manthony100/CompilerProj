@@ -12,7 +12,7 @@ fn main() {
     println!("Recognizes #hai: {}", lexer.lookup("#hai"));
     // Comment for professor if you see on GitHub: thank god this part finally works (╥﹏╥)
 
-    let source = "#MAEK";
+    let source = "#HAI VAR is ordinary text.#KBYE";
 
     let mut lexer = Lexer::new(source);
 
