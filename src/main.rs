@@ -21,6 +21,9 @@ fn main() {
     match parser.parse_lolcode() {
         Ok(()) => {
             println!("Syntax analysis succeeded.");
+            if let Some(tree) = parser.nodes.first() {
+        println!("{:#?}", tree);
+    }
         }
 
         Err(message) => {
@@ -307,9 +310,36 @@ impl LexicalAnalyzer for Lexer {
 // list/vector(s). Any syntax errors encountered should be reported as output to the console with as much error
 // information as possible
 // If an error is encountered, no output file should be created.
+#[derive(Debug, PartialEq)]
+pub enum AstNode {
+    Document(Vec<AstNode>),
+    Head(Vec<AstNode>),
+    Paragraph(Vec<AstNode>),
+    List(Vec<AstNode>),
+    Item(Vec<AstNode>),
+
+    Title(String),
+    Comment(String),
+    Bold(String),
+    Text(String),
+    Link(String),
+    Newline,
+
+    VariableDefine {
+        name: String,
+        value: String,
+    },
+
+    VariableUse {
+        name: String,
+    },
+}
+
+
 pub struct Parser {
     tokens: Vec<String>,
     position: usize,
+    nodes: Vec<AstNode>, // Added a field to hold the nodes of the abstract syntax tree
 }
 
 impl Parser {
@@ -317,6 +347,7 @@ impl Parser {
         Self {
             tokens,
             position: 0,
+            nodes: Vec::new(), // Added this - Initializes the nodes vector to hold the abstract syntax tree
         }
     }
 
@@ -404,10 +435,13 @@ impl Parser {
         self.expect("#GIMMEH")?;
         self.expect("ITEM")?;
 
+        let start = self.nodes.len(); // Remember the starting index of the list item
+
         self.parse_optional_variable_define()?;
         self.parse_inner_list()?;
 
         self.expect("#OIC")?;
+        self.finish_container(start, AstNode::Item);
         Ok(())
     }
 
@@ -456,11 +490,34 @@ impl Parser {
             )),
         }
     }
+
+    fn take_plain_text(&mut self) -> Result<String, String> {
+        match self.current_token() {
+            Some(token) if !token.starts_with('#') => {
+                let text = token.to_string();
+                self.position += 1;
+                Ok(text)
+            }
+
+            _ => Err(self.syntax_error("plain text")),
+        }
+    }
+
+    fn finish_container(
+        &mut self,
+        start: usize,
+        make_node: fn(Vec<AstNode>) -> AstNode,
+    ) {
+        let children = self.nodes.split_off(start);
+        self.nodes.push(make_node(children));
+    }
 }
 
 impl SyntaxAnalyzer for Parser {
     fn parse_lolcode(&mut self) -> Result<(), String> {
         self.expect("#HAI")?;
+
+        let start = self.nodes.len();
 
         self.skip_formatting_whitespace();
 
@@ -483,6 +540,8 @@ impl SyntaxAnalyzer for Parser {
             ));
         }
 
+        self.finish_container(start, AstNode::Document);
+
         Ok(())
     }
 
@@ -495,6 +554,8 @@ impl SyntaxAnalyzer for Parser {
             self.expect("#MAEK")?;
             self.expect("HEAD")?;
 
+            let start = self.nodes.len();
+
             self.skip_formatting_whitespace();
 
             self.parse_title()?;
@@ -502,6 +563,8 @@ impl SyntaxAnalyzer for Parser {
             self.skip_formatting_whitespace();
 
             self.expect("#MKAY")?;
+
+            self.finish_container(start, AstNode::Head);
         }
 
         Ok(())
@@ -511,18 +574,24 @@ impl SyntaxAnalyzer for Parser {
         self.expect("#GIMMEH")?;
         self.expect("TITLE")?;
 
-        self.parse_text()?;
+        let text = self.take_plain_text()?;
 
         self.expect("#OIC")?;
+
+        self.nodes.push(AstNode::Title(text));
+
         Ok(())
     }
 
     fn parse_comment(&mut self) -> Result<(), String> {
         self.expect("#OBTW")?;
 
-        self.parse_text()?;
+        let text = self.take_plain_text()?;
 
         self.expect("#TLDR")?;
+
+        self.nodes.push(AstNode::Comment(text));
+
         Ok(())
     }
 
@@ -548,11 +617,16 @@ impl SyntaxAnalyzer for Parser {
         self.expect("#MAEK")?;
         self.expect("PARAGRAF")?;
 
+        let start = self.nodes.len();
+
         self.parse_optional_variable_define()?;
 
         self.parse_inner_paragraph()?;
 
         self.expect("#MKAY")?;
+
+        self.finish_container(start, AstNode::Paragraph);
+
         Ok(())
     }
 
@@ -581,13 +655,25 @@ impl SyntaxAnalyzer for Parser {
     fn parse_variable_define(&mut self) -> Result<(), String> {
         self.expect("#IHAZ")?;
 
+        let name_position = self.position;
+
         self.parse_variable_name()?;
+
+        let name = self.tokens[name_position]
+            .trim()
+            .to_string();
 
         self.expect("#ITIZ")?;
 
-        self.parse_text()?;
+        let value = self.take_plain_text()?;
 
         self.expect("#MKAY")?;
+
+        self.nodes.push(AstNode::VariableDefine {
+            name,
+            value,
+        });
+
         Ok(())
     }
 
@@ -595,9 +681,20 @@ impl SyntaxAnalyzer for Parser {
         self.expect("#GIMMEH")?;
         self.expect("VAR")?;
 
+        let name_position = self.position;
+
         self.parse_variable_name()?;
 
+        let name = self.tokens[name_position]
+            .trim()
+            .to_string();
+
         self.expect("#OIC")?;
+
+        self.nodes.push(AstNode::VariableUse {
+            name,
+        });
+
         Ok(())
     }
 
@@ -605,15 +702,20 @@ impl SyntaxAnalyzer for Parser {
         self.expect("#GIMMEH")?;
         self.expect("BOLD")?;
 
-        self.parse_text()?;
+        let text = self.take_plain_text()?;
 
         self.expect("#OIC")?;
+
+        self.nodes.push(AstNode::Bold(text));
+
         Ok(())
     }
 
     fn parse_list(&mut self) -> Result<(), String> {
         self.expect("#MAEK")?;
         self.expect("LIST")?;
+
+        let start = self.nodes.len();
 
         self.skip_formatting_whitespace();
 
@@ -622,6 +724,9 @@ impl SyntaxAnalyzer for Parser {
         self.parse_list_items()?;
 
         self.expect("#MKAY")?;
+
+        self.finish_container(start, AstNode::List);
+
         Ok(())
     }
 
@@ -660,44 +765,52 @@ impl SyntaxAnalyzer for Parser {
         self.expect("#GIMMEH")?;
         self.expect("LINX")?;
 
-        let valid_address = match self.current_token() {
+        let address = match self.current_token() {
             Some(token) if !token.starts_with('#') => {
                 let address = token.trim();
 
-                !address.is_empty()
-                    && !address.chars().any(|c| c.is_whitespace())
+                if address.is_empty()
+                    || address.chars().any(|c| c.is_whitespace())
+                {
+                    return Err(self.syntax_error(
+                        "a nonempty address without internal whitespace"
+                    ));
+                }
+
+                address.to_string()
             }
 
-            _ => false,
+            _ => {
+                return Err(self.syntax_error("a link address"));
+            }
         };
-
-        if !valid_address {
-            return Err(self.syntax_error(
-                "a nonempty address without internal whitespace"
-            ));
-        }
 
         self.position += 1;
 
         self.expect("#OIC")?;
+
+        self.nodes.push(AstNode::Link(address));
+
         Ok(())
     }
 
     fn parse_newline(&mut self) -> Result<(), String> {
-        self.expect("#NEWLINE")
+        self.expect("#NEWLINE")?;
+
+        self.nodes.push(AstNode::Newline);
+
+        Ok(())
     }
 
     fn parse_text(&mut self) -> Result<(), String> {
-        match self.current_token() {
-            Some(token) if !token.starts_with('#') => {
-                self.position += 1;
-                Ok(())
-            }
+        let text = self.take_plain_text()?;
 
-            _ => Err(self.syntax_error("plain text")),
-        }
+        self.nodes.push(AstNode::Text(text));
+
+        Ok(())
     }
 }
+
 
 //              Phase 2 - Task #3
 // Implement the static scope variable resolution for the LOLCODE Markdown language
