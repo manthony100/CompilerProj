@@ -3,10 +3,10 @@ fn main() {
     let source = "#hai #obTw this is a comment #TLDR
     #MAEK HEAD #GIMMEH TITLE testing #OIC #MKAY
     #IHAZ numItems #ITIZ 2 #MKAY
-    #MAEK PARAgraf #NEWLINE 
+    #MAEK PARAgraf #NEWLINE
         #GIMMEH BOLD After this is a list of #OIC #GIMMEH VAR numItems #OIC #GIMMEH BOLD items #OIC
         #MAEK LIST #GIMMEH ITEM item1 #OIC #GIMMEH ITEM item2 #OIC #MKAY 
-        #GIMMEH LINX https://www.example.com #OIC
+        #GIMMEH LINX https://github.com/manthony100/CompilerProj #OIC
     #MKAY #KBYE";
 
     let mut lexer = Lexer::new(source);
@@ -18,19 +18,33 @@ fn main() {
 
     let mut parser = Parser::new(lexer.tokens);
 
-    match parser.parse_lolcode() {
-        Ok(()) => {
-            println!("Syntax analysis succeeded.");
-            if let Some(tree) = parser.nodes.first() {
-        println!("{:#?}", tree);
+    if let Err(message) = parser.parse_lolcode() {
+        eprintln!("{}", message);
+        std::process::exit(1);
     }
-        }
 
-        Err(message) => {
-            eprintln!("{}", message);
+    println!("Syntax analysis succeeded.");
+
+    let tree = match parser.nodes.first_mut() {
+        Some(tree) => tree,
+
+        None => {
+            eprintln!(
+                "Internal compiler error: parsing produced no AST."
+            );
             std::process::exit(1);
         }
+    };
+
+    let mut resolver = ScopeResolver::new();
+
+    if let Err(message) = resolver.resolve(tree) {
+        eprintln!("{}", message);
+        std::process::exit(1);
     }
+
+    println!("Static scope analysis succeeded.");
+    println!("{:#?}", tree);
 }
 
 /// Trait for a simple lolcompiler front-end.
@@ -817,6 +831,139 @@ impl SyntaxAnalyzer for Parser {
 // Any static semantic errors - variable being used before it is defined -
 // encountered should be reported as output to the console with as much error information as possible
 // My compiler should exit after the first error is encountered. If an error is encountered, no output file should be created.
+pub struct ScopeResolver {
+    scopes: Vec<Vec<(String, String)>>, // Stack of scopes, each scope is a vector of (variable name, variable value) pairs
+}
+
+impl ScopeResolver {
+    pub fn new() -> Self {
+        Self {
+            scopes: Vec::new(),
+        }
+    }
+
+    pub fn resolve(&mut self, tree: &mut AstNode) -> Result<(), String> {
+        self.scopes.clear();
+
+        if !matches!(tree, AstNode::Document(_)) {
+            return Err(
+                "Static semantic error: expected a Document AST root."
+                    .to_string()
+            );
+        }
+
+        self.resolve_node(tree)
+    }
+
+    fn enter_scope(&mut self) {
+        self.scopes.push(Vec::new());
+    }
+
+    fn leave_scope(&mut self) {
+        self.scopes.pop();
+    }
+
+    fn define_variable(
+        &mut self,
+        name: &str,
+        value: &str,
+    ) -> Result<(), String> {
+        let scope = match self.scopes.last_mut() {
+            Some(scope) => scope,
+
+            None => {
+                return Err(
+                    "Internal resolver error: no active scope."
+                        .to_string()
+                );
+            }
+        };
+
+        scope.push((
+            name.to_string(),
+            value.to_string(),
+        ));
+
+        Ok(())
+    }
+
+    fn lookup_variable(&self, name: &str) -> Option<String> {
+        for scope in self.scopes.iter().rev() {
+            for (defined_name, value) in scope.iter().rev() {
+                if defined_name == name {
+                    return Some(value.clone());
+                }
+            }
+        }
+
+        None
+    }
+
+    fn resolve_children(
+        &mut self,
+        children: &mut [AstNode],
+    ) -> Result<(), String> {
+        self.enter_scope();
+
+        let result = (|| -> Result<(), String> {
+            for child in children {
+                self.resolve_node(child)?;
+            }
+
+            Ok(())
+        })();
+
+        self.leave_scope();
+
+        result
+    }
+
+    fn resolve_node(
+        &mut self,
+        node: &mut AstNode,
+    ) -> Result<(), String> {
+        match node {
+            AstNode::Document(children)
+            | AstNode::Head(children)
+            | AstNode::Paragraph(children)
+            | AstNode::List(children)
+            | AstNode::Item(children) => {
+                self.resolve_children(children)
+            }
+
+            AstNode::VariableDefine { name, value } => {
+                self.define_variable(name, value)
+            }
+
+            AstNode::VariableUse { name } => {
+                let value = match self.lookup_variable(name) {
+                    Some(value) => value,
+
+                    None => {
+                        return Err(format!(
+                            "Static semantic error: variable '{}' \
+                             is used before it is defined or is \
+                             outside its scope.",
+                            name
+                        ));
+                    }
+                };
+
+                *node = AstNode::Text(value);
+
+                Ok(())
+            }
+
+            AstNode::Title(_)
+            | AstNode::Comment(_)
+            | AstNode::Bold(_)
+            | AstNode::Text(_)
+            | AstNode::Link(_)
+            | AstNode::Newline => Ok(()),
+        }
+    }
+}
+
 
 //              Phase 2 - Task #4
 // Implement the semantic analyzer that takes the abstract syntax tree data structure and translates it to a
