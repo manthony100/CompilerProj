@@ -1,6 +1,6 @@
 // Main function
 fn main() {
-    let source = "#hai #obTw this is a comment #TLDR #MAEK HEAD #GIMMEH TITLE testing #OIC #MKAY #NEWLINE this should be on a new line #KBYE";
+    let source = "#hai #obTw this is a comment #TLDR #MAEK HEAD #GIMMEH TITLE testing #OIC #MKAY #MAEK PARAgraf #NEWLINE #GIMMEH BOLD this should be on a new line #OIC #MKAY #KBYE";
 
     let mut lexer = Lexer::new(source);
 
@@ -22,53 +22,6 @@ fn main() {
         }
     }
 }
-// fn main() {
-//     // Comment for professor if you see on GitHub: thank god this part finally works (╥﹏╥)
-
-//     let source = "#HAI#KBYE";
-
-//     let mut lexer = Lexer::new(source);
-
-//     match lexer.tokenize() {
-//         Ok(()) => {
-//             println!("Tokenization succeeded.");
-
-//             for (index, token) in lexer.tokens.iter().enumerate() {
-//                 println!("{}: {:?}", index, token);
-//             }
-//         }
-//         Err(message) => {
-//             eprintln!("{}", message);
-//             std::process::exit(1);
-//         }
-//     }
-// }
-// fn main() {
-
-//     Input for the LOLCODE program
-//     let lolcodeInput: &str = "..........";
-
-//     Create a new instance of the Compiler struct
-//     let mut compiler = Compiler::new(lolcodeInput);
-//     Create a new instance of the LexicalAnalyzer struct with the lolcode input
-//     let mut lexer: LexicalAnalyzer = LexicalAnalyzer::new(lolcodeInput);
-
-//     Initialize the current token with the first token from the lexer
-//     let compiler.current_token = lexer.start();
-
-//     Create a new instance of the SyntaxAnalyzer struct with references to the lexer and compiler
-//     let mut syntax_analyzer = SyntaxAnalyzer::new(&lexer, &compiler);
-//     Call the lolspeak method to parse the lolcode according to the grammar rules
-//     parser.lolspeak();
-
-//     Check if there are any remaining tokens or if the current token is not empty
-//     if !lexer.tokens.is_empty() || !compiler.current_token.is_empty() {
-//             Print an error message if there are any additional tokens
-//             eprintln!("A syntax error was encountered. Additional tokens found.");
-//             Exit the program with an error code
-//             std::process::exit(1);
-//     }
-// }
 
 /// Trait for a simple lolcompiler front-end.
 /// Errors should cause immediate exit inside the implementation.
@@ -102,28 +55,6 @@ fn add_char(&mut self, c: char);
 fn lookup(&self, s: &str) -> bool;
 }
 
-/// OPTION 1 - Trait for a recursive descent Syntax Analyzer
-/// over Vec<String>. Each function parses a nonterminal in
-/// the grammar. On error: exit immediately.
-// pub trait SyntaxAnalyzer {
-// fn parse_lolcode(&mut self);
-// fn parse_head(&mut self);
-// fn parse_title(&mut self);
-// fn parse_comment(&mut self);
-// fn parse_body(&mut self);
-// fn parse_paragraph(&mut self);
-// fn parse_inner_paragraph(&mut self);
-// fn parse_inner_text(&mut self);
-// fn parse_variable_define(&mut self);
-// fn parse_variable_use(&mut self);
-// fn parse_bold(&mut self);
-// fn parse_list(&mut self);
-// fn parse_list_items(&mut self);
-// fn parse_inner_list(&mut self);
-// fn parse_link(&mut self);
-// fn parse_newline(&mut self);
-// fn parse_text(&mut self);
-// }
 // /// OPTION 2 - Trait for a recursive descent Syntax Analyzer
 // /// over Vec<String>. Each function parses a nonterminal in
 // /// the grammar. On error: return Err(message), on success: Ok(()).
@@ -388,24 +319,35 @@ impl Parser {
             .map(|token| token.as_str())
     }
 
-    fn expect(&mut self, expected: &str) -> Result<(), String> {
-        match self.current_token() {
-            Some(actual) if actual == expected => {
-                self.position += 1;
-                Ok(())
-            }
+    fn next_token_is(&self, expected: &str) -> bool {
+        self.tokens
+            .get(self.position + 1)
+            .map(|token| token.as_str())
+            == Some(expected)
+    }
 
-            Some(actual) => Err(format!(
-                "Syntax error at token {}: expected {:?}, found {:?}.",
+    fn syntax_error(&self, expected: &str) -> String {
+        match self.current_token() {
+            Some(actual) => format!(
+                "Syntax error at token {}: expected {}, found {:?}.",
                 self.position + 1,
                 expected,
                 actual
-            )),
+            ),
 
-            None => Err(format!(
-                "Syntax error: expected {:?}, but reached end of input.",
+            None => format!(
+                "Syntax error at end of input: expected {}.",
                 expected
-            )),
+            ),
+        }
+    }
+
+    fn expect(&mut self, expected: &str) -> Result<(), String> {
+        if self.current_token() == Some(expected) {
+            self.position += 1;
+            Ok(())
+        } else {
+            Err(self.syntax_error(&format!("{:?}", expected)))
         }
     }
 
@@ -419,13 +361,93 @@ impl Parser {
         }
     }
 
-    fn not_implemented(&self, rule: &str) -> Result<(), String> {
-        Err(format!(
-            "Parser rule {} is not implemented yet; \
-             current token is {:?}.",
-            rule,
-            self.current_token()
-        ))
+    fn parse_optional_variable_define(&mut self) -> Result<(), String> {
+        self.skip_formatting_whitespace();
+
+        if self.current_token() == Some("#IHAZ") {
+            self.parse_variable_define()?;
+        }
+
+        Ok(())
+    }
+
+    fn parse_variable_name(&mut self) -> Result<(), String> {
+        let valid = match self.current_token() {
+            Some(token) if !token.starts_with('#') => {
+                let name = token.trim();
+
+                !name.is_empty()
+                    && name.chars().all(|c| c.is_ascii_alphabetic())
+            }
+
+            _ => false,
+        };
+
+        if !valid {
+            return Err(self.syntax_error(
+                "a variable name containing only A-Z or a-z"
+            ));
+        }
+
+        self.position += 1;
+        Ok(())
+    }
+
+    fn parse_list_item(&mut self) -> Result<(), String> {
+        self.expect("#GIMMEH")?;
+        self.expect("ITEM")?;
+
+        self.parse_optional_variable_define()?;
+        self.parse_inner_list()?;
+
+        self.expect("#OIC")?;
+        Ok(())
+    }
+
+    fn parse_content_element(
+        &mut self,
+        allow_paragraph: bool,
+        allow_list: bool,
+    ) -> Result<(), String> {
+        match self.current_token() {
+            Some("#OBTW") => self.parse_comment(),
+
+            Some("#NEWLINE") => self.parse_newline(),
+
+            Some("#MAEK") => {
+                if self.next_token_is("PARAGRAF") && allow_paragraph {
+                    self.parse_paragraph()
+                } else if self.next_token_is("LIST") && allow_list {
+                    self.parse_list()
+                } else {
+                    Err(self.syntax_error(
+                        "an allowed #MAEK annotation in this context"
+                    ))
+                }
+            }
+
+            Some("#GIMMEH") => {
+                if self.next_token_is("BOLD") {
+                    self.parse_bold()
+                } else if self.next_token_is("LINX") {
+                    self.parse_link()
+                } else if self.next_token_is("VAR") {
+                    self.parse_variable_use()
+                } else {
+                    Err(self.syntax_error(
+                        "#GIMMEH BOLD, #GIMMEH LINX, or #GIMMEH VAR"
+                    ))
+                }
+            }
+
+            Some(token) if !token.starts_with('#') => {
+                self.parse_text()
+            }
+
+            _ => Err(self.syntax_error(
+                "an allowed content element"
+            )),
+        }
     }
 }
 
@@ -441,22 +463,16 @@ impl SyntaxAnalyzer for Parser {
         }
 
         self.parse_head()?;
-        self.skip_formatting_whitespace();
 
-        if self.current_token() == Some("#IHAZ") {
-            self.parse_variable_define()?;
-            self.skip_formatting_whitespace();
-        }
+        self.parse_optional_variable_define()?;
 
         self.parse_body()?;
+
         self.expect("#KBYE")?;
 
-        if let Some(extra) = self.current_token() {
-            return Err(format!(
-                "Syntax error at token {}: \
-                 unexpected content after #KBYE: {:?}.",
-                self.position + 1,
-                extra
+        if self.current_token().is_some() {
+            return Err(self.syntax_error(
+                "end of input after #KBYE"
             ));
         }
 
@@ -466,19 +482,18 @@ impl SyntaxAnalyzer for Parser {
     fn parse_head(&mut self) -> Result<(), String> {
         let begins_head =
             self.current_token() == Some("#MAEK")
-                && self.tokens
-                    .get(self.position + 1)
-                    .map(|token| token.as_str())
-                    == Some("HEAD");
+                && self.next_token_is("HEAD");
 
         if begins_head {
             self.expect("#MAEK")?;
             self.expect("HEAD")?;
+
             self.skip_formatting_whitespace();
 
             self.parse_title()?;
 
             self.skip_formatting_whitespace();
+
             self.expect("#MKAY")?;
         }
 
@@ -488,19 +503,181 @@ impl SyntaxAnalyzer for Parser {
     fn parse_title(&mut self) -> Result<(), String> {
         self.expect("#GIMMEH")?;
         self.expect("TITLE")?;
-        self.parse_text()?;
-        self.expect("#OIC")?;
 
+        self.parse_text()?;
+
+        self.expect("#OIC")?;
+        Ok(())
+    }
+
+    fn parse_comment(&mut self) -> Result<(), String> {
+        self.expect("#OBTW")?;
+
+        self.parse_text()?;
+
+        self.expect("#TLDR")?;
         Ok(())
     }
 
     fn parse_body(&mut self) -> Result<(), String> {
-        // For this first milestone, only an empty body is supported.
-        if self.current_token() == Some("#KBYE") {
-            Ok(())
-        } else {
-            self.not_implemented("<body> with content")
+        loop {
+            match self.current_token() {
+                Some("#KBYE") => return Ok(()),
+
+                None => {
+                    return Err(self.syntax_error(
+                        "body content or closing #KBYE"
+                    ));
+                }
+
+                _ => {
+                    self.parse_content_element(true, true)?;
+                }
+            }
         }
+    }
+
+    fn parse_paragraph(&mut self) -> Result<(), String> {
+        self.expect("#MAEK")?;
+        self.expect("PARAGRAF")?;
+
+        self.parse_optional_variable_define()?;
+
+        self.parse_inner_paragraph()?;
+
+        self.expect("#MKAY")?;
+        Ok(())
+    }
+
+    fn parse_inner_paragraph(&mut self) -> Result<(), String> {
+        loop {
+            match self.current_token() {
+                Some("#MKAY") => return Ok(()),
+
+                None => {
+                    return Err(self.syntax_error(
+                        "paragraph content or closing #MKAY"
+                    ));
+                }
+
+                _ => {
+                    self.parse_inner_text()?;
+                }
+            }
+        }
+    }
+
+    fn parse_inner_text(&mut self) -> Result<(), String> {
+        self.parse_content_element(false, true)
+    }
+
+    fn parse_variable_define(&mut self) -> Result<(), String> {
+        self.expect("#IHAZ")?;
+
+        self.parse_variable_name()?;
+
+        self.expect("#ITIZ")?;
+
+        self.parse_text()?;
+
+        self.expect("#MKAY")?;
+        Ok(())
+    }
+
+    fn parse_variable_use(&mut self) -> Result<(), String> {
+        self.expect("#GIMMEH")?;
+        self.expect("VAR")?;
+
+        self.parse_variable_name()?;
+
+        self.expect("#OIC")?;
+        Ok(())
+    }
+
+    fn parse_bold(&mut self) -> Result<(), String> {
+        self.expect("#GIMMEH")?;
+        self.expect("BOLD")?;
+
+        self.parse_text()?;
+
+        self.expect("#OIC")?;
+        Ok(())
+    }
+
+    fn parse_list(&mut self) -> Result<(), String> {
+        self.expect("#MAEK")?;
+        self.expect("LIST")?;
+
+        self.skip_formatting_whitespace();
+
+        self.parse_list_item()?;
+
+        self.parse_list_items()?;
+
+        self.expect("#MKAY")?;
+        Ok(())
+    }
+
+    fn parse_list_items(&mut self) -> Result<(), String> {
+        self.skip_formatting_whitespace();
+
+        while self.current_token() == Some("#GIMMEH")
+            && self.next_token_is("ITEM")
+        {
+            self.parse_list_item()?;
+            self.skip_formatting_whitespace();
+        }
+
+        Ok(())
+    }
+
+    fn parse_inner_list(&mut self) -> Result<(), String> {
+        loop {
+            match self.current_token() {
+                Some("#OIC") => return Ok(()),
+
+                None => {
+                    return Err(self.syntax_error(
+                        "list-item content or closing #OIC"
+                    ));
+                }
+
+                _ => {
+                    self.parse_content_element(false, false)?;
+                }
+            }
+        }
+    }
+
+    fn parse_link(&mut self) -> Result<(), String> {
+        self.expect("#GIMMEH")?;
+        self.expect("LINX")?;
+
+        let valid_address = match self.current_token() {
+            Some(token) if !token.starts_with('#') => {
+                let address = token.trim();
+
+                !address.is_empty()
+                    && !address.chars().any(|c| c.is_whitespace())
+            }
+
+            _ => false,
+        };
+
+        if !valid_address {
+            return Err(self.syntax_error(
+                "a nonempty address without internal whitespace"
+            ));
+        }
+
+        self.position += 1;
+
+        self.expect("#OIC")?;
+        Ok(())
+    }
+
+    fn parse_newline(&mut self) -> Result<(), String> {
+        self.expect("#NEWLINE")
     }
 
     fn parse_text(&mut self) -> Result<(), String> {
@@ -510,69 +687,8 @@ impl SyntaxAnalyzer for Parser {
                 Ok(())
             }
 
-            Some(token) => Err(format!(
-                "Syntax error at token {}: expected text, found {:?}.",
-                self.position + 1,
-                token
-            )),
-
-            None => Err(
-                "Syntax error: expected text, but reached end of input."
-                    .to_string()
-            ),
+            _ => Err(self.syntax_error("plain text")),
         }
-    }
-
-    fn parse_comment(&mut self) -> Result<(), String> {
-        self.expect("#OBTW")?;
-        self.parse_text()?;
-        self.expect("#TLDR")?;
-
-        Ok(())
-    }
-
-    fn parse_paragraph(&mut self) -> Result<(), String> {
-        self.not_implemented("<paragraph>")
-    }
-
-    fn parse_inner_paragraph(&mut self) -> Result<(), String> {
-        self.not_implemented("<inner-paragraph>")
-    }
-
-    fn parse_inner_text(&mut self) -> Result<(), String> {
-        self.not_implemented("<inner-text>")
-    }
-
-    fn parse_variable_define(&mut self) -> Result<(), String> {
-        self.not_implemented("<variable-define>")
-    }
-
-    fn parse_variable_use(&mut self) -> Result<(), String> {
-        self.not_implemented("<variable-use>")
-    }
-
-    fn parse_bold(&mut self) -> Result<(), String> {
-        self.not_implemented("<bold>")
-    }
-
-    fn parse_list(&mut self) -> Result<(), String> {
-        self.not_implemented("<list>")
-    }
-
-    fn parse_list_items(&mut self) -> Result<(), String> {
-        self.not_implemented("<list-items>")
-    }
-
-    fn parse_inner_list(&mut self) -> Result<(), String> {
-        self.not_implemented("<inner-list>")
-    }
-
-    fn parse_link(&mut self) -> Result<(), String> {
-        self.not_implemented("<link>")
-    }
-
-    fn parse_newline(&mut self) -> Result<(), String> {
-        self.expect("#NEWLINE")
     }
 }
 
