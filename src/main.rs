@@ -9,7 +9,7 @@ fn main() {
         #GIMMEH LINX https://github.com/manthony100/CompilerProj #OIC
     #MKAY #KBYE";
 
-    let source = "#HAI
+    let source2 = "#HAI
         #IHAZ myname #ITIZ Josh #MKAY
         Before: #GIMMEH VAR myname #OIC
         #MAEK PARAGRAF
@@ -17,6 +17,12 @@ fn main() {
         Inside: #GIMMEH VAR myname #OIC
         #MKAY
         After: #GIMMEH VAR myname #OIC
+    #KBYE";
+
+    let source = "#HAI
+        #MAEK PARAGRAF
+        #GIMMEH VAR missing #OIC
+        #MKAY
     #KBYE";
 
     let mut lexer = Lexer::new(source);
